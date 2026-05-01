@@ -58,21 +58,43 @@ Config.Locale = 'en'
 
 ```lua
 function Config.OnPurchase(source, item, category, quantity)
-  -- Exemple ESX :
-  -- local xPlayer = ESX.GetPlayerFromId(source)
-  -- if xPlayer then
-  --   xPlayer.addMoney((item.rewards or {})[1].amount or 1000)
-  -- end
-
-  -- Exemple QBCore :
-  -- local Player = QBCore.Functions.GetPlayer(source)
-  -- if Player then
-  --   Player.Functions.AddMoney('cash', 1000)
-  -- end
-
-  print(('[TopServeur] %s achète %sx%s'):format(GetPlayerName(source), tostring(quantity), item.id))
+  -- La version actuelle détecte automatiquement ESX / QBCore / ox_core.
+  -- Tu peux aussi surcharger cette fonction pour personnaliser totalement la logique.
+  local playerId = tostring(source or -1)
+  local framework = getFramework()
+  print(('[TopServeur] %s achète %sx%s'):format(playerId, tostring(quantity), item.id))
+  print(('[TopServeur] Framework détecté: %s'):format(framework))
 end
 ```
+
+Par défaut le hook gère déjà :
+- récompenses `money` (ESX/QB/ox_core + fallback commande)
+- récompenses `item`
+- récompenses `command`
+
+Structure recommandée dans `Config.ShopCatalog` :
+
+```lua
+{
+  id = "pack_start",
+  label = {
+    fr = "Pack de démarrage",
+    en = "Starter Pack",
+  },
+  description = {
+    fr = "Cash + voiture",
+    en = "Cash + vehicle",
+  },
+  price = 9,
+  rewards = {
+    { type = "money", amount = 50000 },
+    { type = "item", item = "water", amount = 10 },
+    { type = "command", command = "add_ace {player} topserveur.vip allow" },
+  },
+},
+```
+
+Tu peux donc faire les rewards en multi-framework sans réécrire les couches d’intégration, uniquement via `Config.ShopCatalog`.
 
 ## API d'achat (optionnelle)
 
@@ -114,4 +136,3 @@ Tu peux remplacer entièrement `Config.ShopCatalog` pour brancher tes données D
 - `Config.Menus.maxQuantityPerPurchase` limite la quantité maximale.
 - `Config.Menus.autoCloseSeconds` ferme automatiquement le menu après un achat réussi.
 - `Config.Notification` ajuste la durée des notifs `ox_lib`.
-
