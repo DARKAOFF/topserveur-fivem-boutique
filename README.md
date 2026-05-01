@@ -1,161 +1,117 @@
-# TopServeur FiveM Boutique
+# TopServeur Boutique (ox_lib)
 
-Ressource FiveM officielle pour proposer une boutique en jeu configurable, liée à l'écosystème TopServeur.fr.
+Ressource **FiveM** séparée du plugin de votes.
 
-Cette ressource correspond au **type boutique** : elle ajoute un menu client, une commande, une keymap, une configuration Lua complète, une gestion du contenu boutique et des locales FR/EN.
+Objectif :
+- Afficher un menu boutique en jeu via `ox_lib`.
+- Ajouter une commande et une `keymap` configurables (`/boutique` et `F7` par défaut).
+- Gérer la logique d’articles/catégories côté `config.lua`.
+- Déclencher un hook serveur `Config.OnPurchase(source, item, category, quantity)`.
+- Supporter un appel API optionnel (`Config.Api`) pour tracer les achats.
 
-## Fonctionnalités
+## Dépendance
 
-- Menu boutique client standalone, sans dépendance obligatoire.
-- Commande configurable, par défaut `/boutique`.
-- Keymap configurable, par défaut `F7`.
-- `config.lua` centralisé pour les paramètres, catégories, items, prix et récompenses.
-- Locales françaises et anglaises.
-- Events serveur pour brancher ESX, QBCore, ox_inventory, garage custom ou commandes.
-- Exports serveur pour lire ou modifier les points boutique.
-- Préparation API TopServeur côté serveur uniquement.
+Cette ressource utilise **ox_lib** :
+
+- `@ox_lib/init.lua`
+
+Installe d’abord `ox_lib` sur ton serveur FiveM.
 
 ## Installation
 
-1. Télécharge le repo en ZIP ou clone-le dans ton dossier `resources`.
-2. Renomme le dossier en `topserveur_boutique`.
-3. Ajoute dans ton `server.cfg` :
+1. Copie le dossier dans :
+
+```txt
+resources/topserveur_boutique
+```
+
+2. Ajoute dans ton `server.cfg` :
 
 ```cfg
+ensure ox_lib
 ensure topserveur_boutique
 ```
 
-4. Configure `config.lua` :
+3. Configure `Config` dans `config.lua`.
+
+## Configuration rapide
 
 ```lua
 Config.Locale = 'fr'
 Config.Command = 'boutique'
-Config.KeyMapping.key = 'F7'
-Config.Api.serverToken = 'TON_TOKEN_TOPSERVEUR'
-```
-
-## Configuration boutique
-
-Les catégories et articles se configurent dans `Config.Shop`.
-
-```lua
-Config.Shop = {
-  {
-    id = 'packs',
-    label = 'Packs',
-    description = 'Packs de démarrage',
-    items = {
-      {
-        id = 'starter_pack',
-        label = 'Pack starter',
-        description = 'Un pack idéal pour commencer.',
-        price = 500,
-        icon = '🎁',
-        rewards = {
-          { type = 'money', amount = 25000 },
-          { type = 'item', name = 'bread', count = 5 }
-        }
-      }
-    }
-  }
+Config.KeyMapping = {
+  enabled = true,
+  key = 'F7',
+  description = 'Ouvrir la boutique TopServeur'
 }
 ```
 
-## Brancher les récompenses
-
-Par défaut, la ressource déclenche des events serveur pour te laisser connecter ton framework.
-
-Dans `config.lua`, adapte :
-
-```lua
-function Config.OnPurchase(source, item, category)
-  for _, reward in ipairs(item.rewards or {}) do
-    if reward.type == 'money' then
-      TriggerEvent('topserveur_boutique:rewardMoney', source, reward.amount or 0)
-    elseif reward.type == 'item' then
-      TriggerEvent('topserveur_boutique:rewardItem', source, reward.name, reward.count or 1)
-    elseif reward.type == 'vehicle' then
-      TriggerEvent('topserveur_boutique:rewardVehicle', source, reward.model)
-    elseif reward.type == 'command' then
-      ExecuteCommand(reward.command:gsub('{player}', tostring(source)))
-    end
-  end
-end
-```
-
-Exemple ESX :
-
-```lua
-AddEventHandler('topserveur_boutique:rewardMoney', function(source, amount)
-  local xPlayer = ESX.GetPlayerFromId(source)
-  if xPlayer then
-    xPlayer.addMoney(amount)
-  end
-end)
-
-AddEventHandler('topserveur_boutique:rewardItem', function(source, itemName, count)
-  local xPlayer = ESX.GetPlayerFromId(source)
-  if xPlayer then
-    xPlayer.addInventoryItem(itemName, count)
-  end
-end)
-```
-
-## Commandes
-
-- `/boutique` : ouvre/ferme le menu boutique.
-- `/tsboutique_addpoints <playerId> <amount>` : ajoute des points à un joueur, console ou ACE `topserveur.boutique.admin`.
-
-## Keymap
-
-La touche par défaut est `F7`.
-
-Les joueurs peuvent la modifier dans les paramètres GTA/FiveM, section key bindings.
-
-## Exports serveur
-
-```lua
-exports['topserveur_boutique']:GetPlayerBoutiquePoints(source)
-exports['topserveur_boutique']:SetPlayerBoutiquePoints(source, amount)
-```
-
-## Locales
-
-Fichiers disponibles :
-
-- `locales/fr.lua`
-- `locales/en.lua`
-
-Change la langue avec :
+Si tu changes la langue :
 
 ```lua
 Config.Locale = 'en'
 ```
 
-## API TopServeur
+## Exemple : branchement récompense (server-side)
 
-La configuration API est volontairement côté serveur uniquement :
+`config.lua` expose le hook :
 
 ```lua
-Config.Api = {
-  enabled = false,
-  baseUrl = 'https://topserveur.fr/api/public/v1',
-  serverToken = 'CHANGE_ME',
-  checkVoteBeforePurchase = false,
-  playerIdentifierType = 'license'
-}
+function Config.OnPurchase(source, item, category, quantity)
+  -- Exemple ESX :
+  -- local xPlayer = ESX.GetPlayerFromId(source)
+  -- if xPlayer then
+  --   xPlayer.addMoney((item.rewards or {})[1].amount or 1000)
+  -- end
+
+  -- Exemple QBCore :
+  -- local Player = QBCore.Functions.GetPlayer(source)
+  -- if Player then
+  --   Player.Functions.AddMoney('cash', 1000)
+  -- end
+
+  print(('[TopServeur] %s achète %sx%s'):format(GetPlayerName(source), tostring(quantity), item.id))
+end
 ```
 
-Ne mets jamais de secret sensible côté client.
+## API d'achat (optionnelle)
 
-## Types de ressources
+Tu peux activer la synchronisation de chaque achat via :
 
-- `topserveur_vote` : plugin de vote simple pour recevoir les votes et déclencher des récompenses.
-- `topserveur_boutique` : version boutique avec menu client, contenu configurable, points et hooks de récompenses.
+```lua
+Config.Api.enabled = true
+Config.Api.baseUrl = "https://topserveur.fr/api/public/v1"
+Config.Api.serverToken = "TON_TOKEN_SERVEUR"
+Config.Api.checkVoteBeforePurchase = false
+```
 
-## Sécurité
+Les appels se font vers :
 
-- La validation d'achat se fait côté serveur.
-- Les points sont manipulés côté serveur.
-- Le client ne peut pas déclencher directement une récompense sans passer par l'event serveur.
-- Branche ta vraie base de points ou ton framework dans `Config.OnPurchase` pour une production complète.
+- `POST /api/public/v1/boutique/purchase`
+
+> Si le endpoint n’existe pas encore sur ton backend, laisse `Config.Api.enabled = false` (comportement par défaut).
+
+## Articles personnalisés
+
+`Config.ShopCatalog` supporte :
+
+- catégories,
+- articles,
+- description par langue (`fr`, `en`),
+- prix,
+- commandes de récompense (`command`),
+- prix max par commande.
+
+Tu peux remplacer entièrement `Config.ShopCatalog` pour brancher tes données DB ou ton panneau d’admin.
+
+## Events
+
+- `topserveur_boutique:server:purchase` (serveur) : évènement interne appelé par le menu client.
+- `topserveur_boutique:client:purchaseResult` (client) : retour succès/erreur.
+
+## Notes
+
+- `Config.Menus.maxQuantityPerPurchase` limite la quantité maximale.
+- `Config.Menus.autoCloseSeconds` ferme automatiquement le menu après un achat réussi.
+- `Config.Notification` ajuste la durée des notifs `ox_lib`.
+
