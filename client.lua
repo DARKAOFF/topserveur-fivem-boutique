@@ -10,14 +10,14 @@ local LocaleText = {
     noItems = "Aucun article disponible.",
     openBoutique = "Ouvrir la boutique",
     closeBoutique = "Fermer la boutique",
-    purchaseTitle = "Confirmer l’achat",
-    purchaseHint = "Confirme la quantité et valide.",
-    quantity = "Quantité",
+    purchaseTitle = "Confirmer l'achat",
+    purchaseHint = "Confirme la quantite et valide.",
+    quantity = "Quantite",
     validate = "Valider",
     cancel = "Annuler",
-    purchaseSuccess = "Achat effectué, récompense en cours d’attribution.",
+    purchaseSuccess = "Achat effectue, recompense en cours d'attribution.",
     notFound = "Article introuvable.",
-    purchaseError = "Impossible de terminer l’achat.",
+    purchaseError = "Impossible de terminer l'achat.",
   },
   en = {
     loading = "Loading...",
@@ -38,12 +38,12 @@ local LocaleText = {
 Config.LocaleText = LocaleText
 
 if not lib then
-  print("[TopServeur Boutique] ox_lib introuvable. Installe le resource ox_lib et recommence.")
+  print("[UpServeur Boutique] ox_lib introuvable. Installe le resource ox_lib et recommence.")
   return
 end
 
 local function notify(level, message)
-  local title = t("openBoutique", "TopServeur Boutique")
+  local title = t("openBoutique", "UpServeur Boutique")
   if lib and lib.notify then
     lib.notify({
       title = title,
@@ -61,7 +61,7 @@ local function getCategoryIcon(iconName)
 end
 
 local function buildItemsContext(category)
-  local contextId = ("tsb:category:%s"):format(category.id)
+  local contextId = ("usb:category:%s"):format(category.id)
   local menuItems = {}
 
   for _, item in ipairs(category.items or {}) do
@@ -76,11 +76,11 @@ local function buildItemsContext(category)
       onSelect = function()
         if lib and lib.inputDialog then
           local confirm = lib.inputDialog(
-            t("purchaseTitle", "Confirmer l’achat"),
+            t("purchaseTitle", "Confirmer l'achat"),
             {
               {
                 type = "number",
-                label = t("quantity", "Quantité"),
+                label = t("quantity", "Quantite"),
                 default = 1,
                 min = 1,
                 max = Config.Menus.maxQuantityPerPurchase,
@@ -92,11 +92,11 @@ local function buildItemsContext(category)
           end
 
           local quantity = tonumber(confirm[1]) or 1
-          TriggerServerEvent("topserveur_boutique:server:purchase", category.id, item.id, quantity)
+          TriggerServerEvent("upserveur_boutique:server:purchase", category.id, item.id, quantity)
           return
         end
 
-        TriggerServerEvent("topserveur_boutique:server:purchase", category.id, item.id, 1)
+        TriggerServerEvent("upserveur_boutique:server:purchase", category.id, item.id, 1)
       end,
     })
   end
@@ -122,7 +122,7 @@ local function buildRootContext()
   for _, category in ipairs(Config.ShopCatalog or {}) do
     local categoryTitle = category.label and (category.label[locale] or category.label.en) or category.id
     local categoryDesc = category.description and (category.description[locale] or category.description.en) or ""
-    local categoryId = ("tsb:category:%s"):format(category.id)
+    local categoryId = ("usb:category:%s"):format(category.id)
 
     buildItemsContext(category)
 
@@ -145,8 +145,8 @@ local function buildRootContext()
   end
 
   lib.registerContext({
-    id = "tsb:main",
-    title = "TopServeur Boutique",
+    id = "usb:main",
+    title = "UpServeur Boutique",
     options = menuItems,
   })
 end
@@ -160,7 +160,7 @@ local function openShop()
   lib.closeInputDialog()
   locale = Config.Locale or "fr"
   buildRootContext()
-  lib.showContext("tsb:main")
+  lib.showContext("usb:main")
 end
 
 RegisterCommand(Config.Command, function()
@@ -176,16 +176,20 @@ if Config.KeyMapping and Config.KeyMapping.enabled then
   )
 end
 
-RegisterNetEvent("topserveur_boutique:client:purchaseResult", function(success, message)
+RegisterNetEvent("upserveur_boutique:client:purchaseResult", function(success, message)
   if success then
-    notify("success", message or t("purchaseSuccess", "Achat effectué, récompense en cours d’attribution."))
+    notify("success", message or t("purchaseSuccess", "Achat effectue, recompense en cours d'attribution."))
     if Config.Menus.autoCloseSeconds and Config.Menus.autoCloseSeconds > 0 then
       SetTimeout(Config.Menus.autoCloseSeconds * 1000, function()
         lib.hideContext()
       end)
     end
   else
-    notify("error", message or t("purchaseError", "Impossible de terminer l’achat."))
+    notify("error", message or t("purchaseError", "Impossible de terminer l'achat."))
   end
 end)
 
+-- Legacy event support while communities migrate.
+RegisterNetEvent("topserveur_boutique:client:purchaseResult", function(success, message)
+  TriggerEvent("upserveur_boutique:client:purchaseResult", success, message)
+end)

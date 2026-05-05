@@ -36,48 +36,47 @@ local function getItemById(category, itemId)
   return nil
 end
 
-RegisterNetEvent("topserveur_boutique:server:purchase")
-AddEventHandler("topserveur_boutique:server:purchase", function(categoryId, itemId, quantity)
+local function handlePurchase(categoryId, itemId, quantity)
   local sourcePlayer = source
   local normalizedCategory = normalizeId(categoryId)
   local normalizedItem = normalizeId(itemId)
   local normalizedQuantity = toNumber(quantity, 1)
 
   if normalizedCategory == "" or normalizedItem == "" then
-    TriggerClientEvent("topserveur_boutique:client:purchaseResult", sourcePlayer, false, "catégorie/article invalide.")
+    TriggerClientEvent("upserveur_boutique:client:purchaseResult", sourcePlayer, false, "categorie/article invalide.")
     return
   end
 
   if normalizedQuantity < 1 then
-    TriggerClientEvent("topserveur_boutique:client:purchaseResult", sourcePlayer, false, "Quantité invalide.")
+    TriggerClientEvent("upserveur_boutique:client:purchaseResult", sourcePlayer, false, "Quantite invalide.")
     return
   end
 
   local maxQuantity = tonumber(Config.Menus.maxQuantityPerPurchase) or 20
   if normalizedQuantity > maxQuantity then
     TriggerClientEvent(
-      "topserveur_boutique:client:purchaseResult",
+      "upserveur_boutique:client:purchaseResult",
       sourcePlayer,
       false,
-      ("Quantité max autorisée : %s"):format(maxQuantity)
+      ("Quantite max autorisee : %s"):format(maxQuantity)
     )
     return
   end
 
   local category = getCategoryById(normalizedCategory)
   if not category then
-    TriggerClientEvent("topserveur_boutique:client:purchaseResult", sourcePlayer, false, "Catégorie introuvable.")
+    TriggerClientEvent("upserveur_boutique:client:purchaseResult", sourcePlayer, false, "Categorie introuvable.")
     return
   end
 
   local item = getItemById(category, normalizedItem)
   if not item then
-    TriggerClientEvent("topserveur_boutique:client:purchaseResult", sourcePlayer, false, "Article introuvable.")
+    TriggerClientEvent("upserveur_boutique:client:purchaseResult", sourcePlayer, false, "Article introuvable.")
     return
   end
 
   local playerName = GetPlayerName(sourcePlayer)
-  local line = ("[TopServeur Boutique] %s achète %sx%s (%s)"):format(
+  local line = ("[UpServeur Boutique] %s achete %sx%s (%s)"):format(
     playerName or ("player:" .. tostring(sourcePlayer)),
     normalizedQuantity,
     item.id,
@@ -89,18 +88,17 @@ AddEventHandler("topserveur_boutique:server:purchase", function(categoryId, item
     if type(Config.OnPurchase) == "function" then
       Config.OnPurchase(sourcePlayer, item, category, normalizedQuantity)
     else
-      print("[TopServeur Boutique] Config.OnPurchase non configuré : aucune récompense personnalisée.")
+      print("[UpServeur Boutique] Config.OnPurchase non configure : aucune recompense personnalisee.")
     end
   end)
 
   if not ok then
-    local errorText = ("Erreur lors du traitement de la récompense : %s"):format(tostring(err))
-    print(("[TopServeur Boutique] %s"):format(errorText))
-    TriggerClientEvent("topserveur_boutique:client:purchaseResult", sourcePlayer, false, errorText)
+    local errorText = ("Erreur lors du traitement de la recompense : %s"):format(tostring(err))
+    print(("[UpServeur Boutique] %s"):format(errorText))
+    TriggerClientEvent("upserveur_boutique:client:purchaseResult", sourcePlayer, false, errorText)
     return
   end
 
-  -- Envoie éventuel de l’événement d’achat vers TopServeur via une API optionnelle.
   if Config.Api.enabled and Config.Api.baseUrl and Config.Api.baseUrl ~= "" then
     local payload = json.encode({
       playerId = tostring(sourcePlayer),
@@ -109,16 +107,16 @@ AddEventHandler("topserveur_boutique:server:purchase", function(categoryId, item
       itemId = item.id,
       quantity = normalizedQuantity,
       serverToken = Config.Api.serverToken,
-      source = "topserveur_boutique",
+      source = "upserveur_boutique",
     })
 
     PerformHttpRequest(
       ("%s/boutique/purchase"):format(Config.Api.baseUrl),
       function(statusCode, body)
         if statusCode and statusCode >= 200 and statusCode < 300 then
-          print(("[TopServeur Boutique] Sync OK status=%s"):format(statusCode))
+          print(("[UpServeur Boutique] Sync OK status=%s"):format(statusCode))
         else
-          print(("[TopServeur Boutique] Sync KO status=%s body=%s"):format(tostring(statusCode), tostring(body)))
+          print(("[UpServeur Boutique] Sync KO status=%s body=%s"):format(tostring(statusCode), tostring(body)))
         end
       end,
       "POST",
@@ -127,5 +125,11 @@ AddEventHandler("topserveur_boutique:server:purchase", function(categoryId, item
     )
   end
 
-  TriggerClientEvent("topserveur_boutique:client:purchaseResult", sourcePlayer, true, "Achat validé.")
-end)
+  TriggerClientEvent("upserveur_boutique:client:purchaseResult", sourcePlayer, true, "Achat valide.")
+end
+
+RegisterNetEvent("upserveur_boutique:server:purchase")
+AddEventHandler("upserveur_boutique:server:purchase", handlePurchase)
+
+RegisterNetEvent("topserveur_boutique:server:purchase")
+AddEventHandler("topserveur_boutique:server:purchase", handlePurchase)

@@ -1,23 +1,32 @@
 Config = Config or {}
 
-Config.Locale = GetConvar("topserveur_boutique_locale", "fr")
+local function getCompatConvar(primaryName, legacyName, defaultValue)
+  local primaryValue = GetConvar(primaryName, "")
+  if primaryValue ~= nil and primaryValue ~= "" then
+    return primaryValue
+  end
 
-Config.Command = GetConvar("topserveur_boutique_command", "boutique")
+  return GetConvar(legacyName, defaultValue)
+end
+
+Config.Locale = getCompatConvar("upserveur_boutique_locale", "topserveur_boutique_locale", "fr")
+
+Config.Command = getCompatConvar("upserveur_boutique_command", "topserveur_boutique_command", "boutique")
 Config.KeyMapping = {
-  enabled = GetConvar("topserveur_boutique_keymap", "1") == "1",
-  key = GetConvar("topserveur_boutique_key", "F7"),
-  description = "Ouvrir la boutique TopServeur",
+  enabled = getCompatConvar("upserveur_boutique_keymap", "topserveur_boutique_keymap", "1") == "1",
+  key = getCompatConvar("upserveur_boutique_key", "topserveur_boutique_key", "F7"),
+  description = "Ouvrir la boutique UpServeur",
 }
 
 Config.Notification = {
-  duration = tonumber(GetConvar("topserveur_boutique_notify_duration", "4500")) or 4500,
+  duration = tonumber(getCompatConvar("upserveur_boutique_notify_duration", "topserveur_boutique_notify_duration", "4500")) or 4500,
 }
 
 Config.Api = {
-  enabled = GetConvar("topserveur_boutique_api", "false") == "true",
-  baseUrl = GetConvar("topserveur_boutique_api_url", "https://topserveur.fr/api/public/v1"),
-  serverToken = GetConvar("topserveur_boutique_server_token", ""),
-  checkVoteBeforePurchase = GetConvar("topserveur_boutique_check_vote", "false") == "true",
+  enabled = getCompatConvar("upserveur_boutique_api", "topserveur_boutique_api", "false") == "true",
+  baseUrl = getCompatConvar("upserveur_boutique_api_url", "topserveur_boutique_api_url", "https://upserveur.fr/api/public/v1"),
+  serverToken = getCompatConvar("upserveur_boutique_server_token", "topserveur_boutique_server_token", ""),
+  checkVoteBeforePurchase = getCompatConvar("upserveur_boutique_check_vote", "topserveur_boutique_check_vote", "false") == "true",
 }
 
 Config.ShopCatalog = {
@@ -28,7 +37,7 @@ Config.ShopCatalog = {
       en = "Packs",
     },
     description = {
-      fr = "Packs de lancement, boosts et récompenses VIP",
+      fr = "Packs de lancement, boosts et recompenses VIP",
       en = "Starter packs, boosts and VIP rewards",
     },
     icon = "package",
@@ -36,7 +45,7 @@ Config.ShopCatalog = {
       {
         id = "pack_start",
         label = {
-          fr = "Pack de démarrage",
+          fr = "Pack de demarrage",
           en = "Starter Pack",
         },
         description = {
@@ -58,14 +67,14 @@ Config.ShopCatalog = {
           en = "VIP Pack",
         },
         description = {
-          fr = "Doublement d’expérience et accès salon privé (exemple)",
+          fr = "Doublement d'experience et acces salon prive (exemple)",
           en = "XP boost and private lounge access (example)",
         },
         price = 15,
         icon = "star",
         command = "setVip {player} 24h",
         rewards = {
-          { type = "command", command = "add_ace {player} topserveur.vip allow" },
+          { type = "command", command = "add_ace {player} upserveur.vip allow" },
         },
       },
     },
@@ -73,11 +82,11 @@ Config.ShopCatalog = {
   {
     id = "vehicules",
     label = {
-      fr = "Véhicules",
+      fr = "Vehicules",
       en = "Vehicles",
     },
     description = {
-      fr = "Garages et véhicules légers/rapides",
+      fr = "Garages et vehicules legers/rapides",
       en = "Vehicle garage and quick rides",
     },
     icon = "car",
@@ -89,7 +98,7 @@ Config.ShopCatalog = {
           en = "Sultan RS",
         },
         description = {
-          fr = "Ajoute un véhicule prêt-à-ranger en garage",
+          fr = "Ajoute un vehicule pret-a-ranger en garage",
           en = "Add vehicle directly in garage",
         },
         price = 19,
@@ -103,7 +112,6 @@ Config.ShopCatalog = {
   },
 }
 
--- Détection automatique du framework pour un hook multi-framework.
 local function getFramework()
   if GetResourceState("es_extended") == "started" then
     return "esx"
@@ -198,7 +206,7 @@ local function grantMoney(playerObj, framework, playerId, reward)
   end
   if framework == "qbcore" and playerObj and playerObj.Functions then
     local account = reward.account or "cash"
-    playerObj.Functions.AddMoney(account, amount, "topserveur_boutique")
+    playerObj.Functions.AddMoney(account, amount, "upserveur_boutique")
     return
   end
   if framework == "oxcore" and playerObj and playerObj.addMoney then
@@ -208,10 +216,7 @@ local function grantMoney(playerObj, framework, playerId, reward)
     return
   end
 
-  executeCommandTemplate(
-    ("add_money {player} %s"):format(amount),
-    playerId
-  )
+  executeCommandTemplate(("add_money {player} %s"):format(amount), playerId)
 end
 
 local function grantItem(playerObj, framework, playerId, reward)
@@ -241,10 +246,7 @@ local function grantItem(playerObj, framework, playerId, reward)
     end
   end
 
-  executeCommandTemplate(
-    ("item add {player} %s %s"):format(itemName, amount),
-    playerId
-  )
+  executeCommandTemplate(("item add {player} %s %s"):format(itemName, amount), playerId)
 end
 
 function Config.OnPurchase(source, item, category, quantity)
@@ -253,16 +255,16 @@ function Config.OnPurchase(source, item, category, quantity)
   local playerObj = getPlayerObject(source, framework)
   quantity = quantity or 1
 
-  print(("TopServeur Boutique purchase: player=%s item=%s category=%s"):format(
+  print(("UpServeur Boutique purchase: player=%s item=%s category=%s"):format(
     playerId,
     item and item.id or "unknown",
     category and category.id or "unknown"
   ))
 
   if playerObj then
-    print(("[TopServeur Boutique] Framework détecté: %s"):format(framework))
+    print(("[UpServeur Boutique] Framework detecte: %s"):format(framework))
   else
-    print("[TopServeur Boutique] Aucun objet joueur framework détecté; fallback commandes.")
+    print("[UpServeur Boutique] Aucun objet joueur framework detecte; fallback commandes.")
   end
 
   for _, reward in ipairs(item and item.rewards or {}) do
@@ -280,6 +282,6 @@ function Config.OnPurchase(source, item, category, quantity)
 end
 
 Config.Menus = {
-  maxQuantityPerPurchase = tonumber(GetConvar("topserveur_boutique_max_qty", "20")) or 20,
-  autoCloseSeconds = tonumber(GetConvar("topserveur_boutique_autoclose", "3")) or 3,
+  maxQuantityPerPurchase = tonumber(getCompatConvar("upserveur_boutique_max_qty", "topserveur_boutique_max_qty", "20")) or 20,
+  autoCloseSeconds = tonumber(getCompatConvar("upserveur_boutique_autoclose", "topserveur_boutique_autoclose", "3")) or 3,
 }

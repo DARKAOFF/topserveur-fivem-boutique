@@ -1,138 +1,52 @@
-# TopServeur Boutique (ox_lib)
+# UpServeur FiveM Shop
 
-Ressource **FiveM** séparée du plugin de votes.
+Plugin officiel UpServeur pour connecter un serveur de jeu au système de vote UpServeur.
 
-Objectif :
-- Afficher un menu boutique en jeu via `ox_lib`.
-- Ajouter une commande et une `keymap` configurables (`/boutique` et `F7` par défaut).
-- Gérer la logique d’articles/catégories côté `config.lua`.
-- Déclencher un hook serveur `Config.OnPurchase(source, item, category, quantity)`.
-- Supporter un appel API optionnel (`Config.Api`) pour tracer les achats.
-
-## Dépendance
-
-Cette ressource utilise **ox_lib** :
-
-- `@ox_lib/init.lua`
-
-Installe d’abord `ox_lib` sur ton serveur FiveM.
+`upserveur_boutique` est une boutique FiveM basée sur `ox_lib`, avec menu, commande, keymap et hooks serveur personnalisables.
 
 ## Installation
 
-1. Copie le dossier dans :
+1. Place la ressource dans `resources/[upserveur]/upserveur_boutique`
+2. Vérifie que `ox_lib` est démarré avant elle
+3. Ajoute `ensure upserveur_boutique` dans `server.cfg`
+4. Ajuste la configuration et les récompenses dans `config.lua`
 
-```txt
-resources/topserveur_boutique
-```
-
-2. Ajoute dans ton `server.cfg` :
+## Configuration recommandée
 
 ```cfg
 ensure ox_lib
-ensure topserveur_boutique
+ensure upserveur_boutique
+
+set upserveur_boutique_command "boutique"
+set upserveur_boutique_api "false"
+set upserveur_boutique_api_url "https://upserveur.fr/api/public/v1"
+set upserveur_boutique_server_token ""
 ```
 
-3. Configure `Config` dans `config.lua`.
+## Compatibilité ancienne configuration
 
-## Configuration rapide
+La ressource accepte encore les anciens convars `topserveur_boutique_*` et l’ancien namespace d’événements `topserveur_boutique:*`.
 
-```lua
-Config.Locale = 'fr'
-Config.Command = 'boutique'
-Config.KeyMapping = {
-  enabled = true,
-  key = 'F7',
-  description = 'Ouvrir la boutique TopServeur'
-}
-```
+## Fonctionnalités
 
-Si tu changes la langue :
+- menu client `ox_lib`
+- catalogue configurable
+- hooks commandes / argent / items
+- support ESX, QBCore, ox_core et fallback commandes
+- sync API optionnelle vers UpServeur
 
-```lua
-Config.Locale = 'en'
-```
+## Événements
 
-## Exemple : branchement récompense (server-side)
+- `upserveur_boutique:server:purchase`
+- `upserveur_boutique:client:purchaseResult`
 
-`config.lua` expose le hook :
+Compatibilité temporaire :
 
-```lua
-function Config.OnPurchase(source, item, category, quantity)
-  -- La version actuelle détecte automatiquement ESX / QBCore / ox_core.
-  -- Tu peux aussi surcharger cette fonction pour personnaliser totalement la logique.
-  local playerId = tostring(source or -1)
-  local framework = getFramework()
-  print(('[TopServeur] %s achète %sx%s'):format(playerId, tostring(quantity), item.id))
-  print(('[TopServeur] Framework détecté: %s'):format(framework))
-end
-```
-
-Par défaut le hook gère déjà :
-- récompenses `money` (ESX/QB/ox_core + fallback commande)
-- récompenses `item`
-- récompenses `command`
-
-Structure recommandée dans `Config.ShopCatalog` :
-
-```lua
-{
-  id = "pack_start",
-  label = {
-    fr = "Pack de démarrage",
-    en = "Starter Pack",
-  },
-  description = {
-    fr = "Cash + voiture",
-    en = "Cash + vehicle",
-  },
-  price = 9,
-  rewards = {
-    { type = "money", amount = 50000 },
-    { type = "item", item = "water", amount = 10 },
-    { type = "command", command = "add_ace {player} topserveur.vip allow" },
-  },
-},
-```
-
-Tu peux donc faire les rewards en multi-framework sans réécrire les couches d’intégration, uniquement via `Config.ShopCatalog`.
-
-## API d'achat (optionnelle)
-
-Tu peux activer la synchronisation de chaque achat via :
-
-```lua
-Config.Api.enabled = true
-Config.Api.baseUrl = "https://topserveur.fr/api/public/v1"
-Config.Api.serverToken = "TON_TOKEN_SERVEUR"
-Config.Api.checkVoteBeforePurchase = false
-```
-
-Les appels se font vers :
-
-- `POST /api/public/v1/boutique/purchase`
-
-> Si le endpoint n’existe pas encore sur ton backend, laisse `Config.Api.enabled = false` (comportement par défaut).
-
-## Articles personnalisés
-
-`Config.ShopCatalog` supporte :
-
-- catégories,
-- articles,
-- description par langue (`fr`, `en`),
-- prix,
-- commandes de récompense (`command`),
-- prix max par commande.
-
-Tu peux remplacer entièrement `Config.ShopCatalog` pour brancher tes données DB ou ton panneau d’admin.
-
-## Events
-
-- `topserveur_boutique:server:purchase` (serveur) : évènement interne appelé par le menu client.
-- `topserveur_boutique:client:purchaseResult` (client) : retour succès/erreur.
+- `topserveur_boutique:server:purchase`
+- `topserveur_boutique:client:purchaseResult`
 
 ## Notes
 
-- `Config.Menus.maxQuantityPerPurchase` limite la quantité maximale.
-- `Config.Menus.autoCloseSeconds` ferme automatiquement le menu après un achat réussi.
-- `Config.Notification` ajuste la durée des notifs `ox_lib`.
+- adapte `Config.OnPurchase` à ton framework et ton économie
+- la ressource ne change pas ta logique métier, elle rebrand simplement le socle
+- pense à migrer progressivement les anciennes permissions comme `topserveur.vip` vers `upserveur.vip`
